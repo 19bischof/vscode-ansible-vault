@@ -34,11 +34,7 @@ export const extractVaultId = (encryptedContent: string): string => {
   return "default";
 };
 
-export const isVaultIdList = (string: string) => {
-  return string.includes("@");
-};
-
-export function untildify(pathWithTilde: string) {
+function untildify(pathWithTilde: string) {
   const homeDirectory = os.homedir();
   if (typeof pathWithTilde !== "string") {
     throw new TypeError(`Expected a string, got ${typeof pathWithTilde}`);
@@ -239,11 +235,11 @@ const getValueByCfg = (logs: vscode.OutputChannel, path: string) => {
   return undefined;
 };
 
-export function getVaultIdList(idList: string): string[] {
+function getVaultIdList(idList: string): string[] {
   return idList.split(",").map((element) => element.trim().split("@")[0]);
 }
 
-export function getVaultIdPasswordDict(idList: string): {
+function getVaultIdPasswordDict(idList: string): {
   [key: string]: string;
 } {
   const vaultIdPasswordDict: { [key: string]: string } = {};

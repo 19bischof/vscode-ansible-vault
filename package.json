@@ -21,7 +21,6 @@
     "ansible-vault",
     "decrypt",
     "encrypt",
-    "rekey",
     "multi-root ready"
   ],
   "preview": false,

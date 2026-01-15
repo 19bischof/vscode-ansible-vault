@@ -20,11 +20,17 @@ class VaultedLineCodeLensProvider implements vscode.CodeLensProvider {
   ): vscode.CodeLens[] | Thenable<vscode.CodeLens[]> {
     const codeLenses: vscode.CodeLens[] = [];
 
+    // Skip entire vault files (files that start with $ANSIBLE_VAULT)
+    const firstLine = document.lineAt(0).text;
+    if (firstLine.startsWith("$ANSIBLE_VAULT;")) {
+      return codeLenses;
+    }
+
     for (let line = 0; line < document.lineCount; line++) {
       const text = document.lineAt(line).text;
 
-      // Check for !vault | or !vault |- or $ANSIBLE_VAULT indicators
-      if (text.match(/!vault \|[-+]?/) || text.startsWith("$ANSIBLE_VAULT;")) {
+      // Check for !vault | or !vault |- (inline vaults only)
+      if (text.match(/!vault \|[-+]?/)) {
         const range = new vscode.Range(line, 0, line, text.length);
         const copyAction = new vscode.CodeLens(range, {
           title: "📋 Copy",
@@ -266,7 +272,6 @@ export function activate(context: vscode.ExtensionContext) {
       
       // Find the end of the vault block
       let endLine = line + 1;
-      const baseIndent = indent.length + 4; // Vault content is indented
       while (endLine < document.lineCount) {
         const checkLine = document.lineAt(endLine).text;
         // Check if line is part of vault (starts with spaces and is hex or $ANSIBLE_VAULT)
@@ -360,22 +365,8 @@ export function activate(context: vscode.ExtensionContext) {
       logs.appendLine(`🔒 Encrypt YAML value: ${key}`);
       const encryptedText = await encrypt(trimmedValue, pass, vaultId);
       if (encryptedText) {
-        // Calculate indentation for the vault block
-        const keyIndent = indent.length;
-        const valueIndent = keyIndent + 4; // Standard YAML indent
-        
-        // Format the encrypted text with proper indentation
-        const encryptedLines = encryptedText.split("\n");
-        const formattedVault = encryptedLines
-          .map((l, i) => (i === 0 ? l : " ".repeat(valueIndent) + l))
-          .join("\n");
-        
-        // Replace the entire line
-        const newLine = `${indent}${key}: !vault |\n${" ".repeat(valueIndent)}${formattedVault.replace("$ANSIBLE_VAULT", "$ANSIBLE_VAULT")}`;
-        
-        // Actually, let's use reindentText properly
         const fullRange = line.range;
-        const indentLevel = Math.floor(keyIndent / Number(editor.options.tabSize || 4));
+        const indentLevel = Math.floor(indent.length / Number(editor.options.tabSize || 4));
         const formattedText = reindentText(encryptedText, indentLevel, Number(editor.options.tabSize || 4));
         
         await editor.edit((editBuilder) => {
@@ -614,20 +605,14 @@ const reindentText = (
 };
 
 const encrypt = async (text: string, pass: string, encryptVaultId: any) => {
-  logs.appendLine(`🔒 encrypt() called with:`);
-  logs.appendLine(`  - text length: ${text.length}`);
-  logs.appendLine(`  - password length: ${pass?.length || 0}`);
-  logs.appendLine(`  - encryptVaultId: '${encryptVaultId}'`);
-  logs.appendLine(`  - encryptVaultId type: ${typeof encryptVaultId}`);
+  logs.appendLine(`🔒 encrypt() called with vault ID: '${encryptVaultId}'`);
   
   const vault = new Vault({ password: pass });
   try {
-    let result;
     // For encryption: use empty string for default vault, or the specific vault ID
     const vaultIdForEncrypt = (encryptVaultId && encryptVaultId !== "default") ? encryptVaultId : "";
-    logs.appendLine(`  - Calling vault.encrypt() with vault ID: '${vaultIdForEncrypt}' (empty string = default vault)`);
-    result = (await vault.encrypt(text, vaultIdForEncrypt)) as string;
-    logs.appendLine(`✅ Encryption successful, result length: ${result?.length || 0}`);
+    const result = (await vault.encrypt(text, vaultIdForEncrypt)) as string;
+    logs.appendLine(`✅ Encryption successful`);
     return result;
   } catch (error: any) {
     logs.appendLine(`❌ Encryption failed: ${error.message}`);
@@ -638,16 +623,7 @@ const encrypt = async (text: string, pass: string, encryptVaultId: any) => {
 };
 
 const decrypt = async (text: string, pass: string, encryptVaultId: any) => {
-  logs.appendLine(`🔓 decrypt() called with:`);
-  logs.appendLine(`  - text length: ${text.length}`);
-  logs.appendLine(`  - text first 50 chars: ${text.substring(0, 50)}`);
-  logs.appendLine(`  - password length: ${pass?.length || 0}`);
-  logs.appendLine(`  - password (hex): ${Buffer.from(pass, 'utf-8').toString('hex')}`);
-  logs.appendLine(`  - password has newline: ${pass?.includes('\n') ? 'YES' : 'NO'}`);
-  logs.appendLine(`  - password has carriage return: ${pass?.includes('\r') ? 'YES' : 'NO'}`);
-  logs.appendLine(`  - password has tab: ${pass?.includes('\t') ? 'YES' : 'NO'}`);
-  logs.appendLine(`  - encryptVaultId: '${encryptVaultId}'`);
-  logs.appendLine(`  - encryptVaultId type: ${typeof encryptVaultId}`);
+  logs.appendLine(`🔓 decrypt() called with vault ID: '${encryptVaultId}'`);
   
   const vault = new Vault({ password: pass });
   try {
