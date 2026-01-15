@@ -6,8 +6,9 @@ import * as os from "os";
 
 // --- Utility functions moved from extension.ts ---
 export const getInlineTextType = (text: string) => {
+  // Handle both !vault | and !vault |- (YAML block scalar with strip indicator)
   if (text.trim().startsWith("!vault |")) {
-    text = text.replace("!vault |", "");
+    text = text.replace(/!vault \|[-+]?\s*/, "");
   }
   return text.trim().startsWith("$ANSIBLE_VAULT;") ? "encrypted" : "plaintext";
 };
@@ -16,19 +17,21 @@ export const getTextType = (text: string) => {
   return text.indexOf("$ANSIBLE_VAULT;") === 0 ? "encrypted" : "plaintext";
 };
 
-export const extractVaultId = (encryptedContent: string): string | undefined => {
+export const extractVaultId = (encryptedContent: string): string => {
+  // Remove !vault | or !vault |- or !vault |+ prefix
   encryptedContent = encryptedContent
-    .replace("!vault |", "")
+    .replace(/!vault \|[-+]?\s*/, "")
     .trim()
     .replace(/[^\S\r\n]+/gm, "");
   const [header, ...hexValues] = encryptedContent.split(/\r?\n/);
   if (header.startsWith("$ANSIBLE_VAULT")) {
     const parts = header.split(";");
-    if (parts.length >= 4) {
+    if (parts.length >= 4 && parts[3]) {
       return parts[3];
     }
   }
-  return undefined;
+  // If no vault ID is specified, it's the default vault
+  return "default";
 };
 
 export const isVaultIdList = (string: string) => {
@@ -177,22 +180,54 @@ export function findPassword(
   configFileInWorkspacePath: string,
   vaultPassFile: string
 ) {
+  logs.appendLine(`🔍 findPassword() called with:`);
+  logs.appendLine(`  - configFileInWorkspacePath: ${configFileInWorkspacePath}`);
+  logs.appendLine(`  - vaultPassFile: ${vaultPassFile}`);
+  
+  // First try: check if the path exists as-is
   if (fs.existsSync(vaultPassFile)) {
+    logs.appendLine(`✅ Password file found at: ${vaultPassFile}`);
     const content = fs.readFileSync(vaultPassFile, "utf-8");
-    return content.replace(/[\n\r\t]/gm, "");
+    const cleanedContent = content.replace(/[\n\r\t]/gm, "");
+    logs.appendLine(`✅ Password loaded from file (length: ${cleanedContent.length} chars)`);
+    logs.appendLine(`  - First 10 chars: ${cleanedContent.substring(0, 10)}...`);
+    return cleanedContent;
   }
+  
+  logs.appendLine(`⚠️ Password file not found at absolute path, searching relative to workspace...`);
+  
+  // Second try: search for the file relative to workspace
   const passPath = findAnsibleCfgFile(
     logs,
     configFileInWorkspacePath,
     vaultPassFile.trim()
   );
-  return readFile(logs, passPath);
+  
+  if (passPath) {
+    logs.appendLine(`✅ Password file found at: ${passPath}`);
+  } else {
+    logs.appendLine(`❌ Password file not found`);
+  }
+  
+  const result = readFile(logs, passPath);
+  if (result) {
+    logs.appendLine(`✅ Password loaded (length: ${result.length} chars)`);
+    logs.appendLine(`  - First 10 chars: ${result.substring(0, 10)}...`);
+  } else {
+    logs.appendLine(`❌ Failed to read password file`);
+  }
+  return result;
 }
 
 export function readFile(logs: vscode.OutputChannel, path: string | undefined) {
+  logs.appendLine(`📄 readFile() called with path: ${path}`);
   if (path && fs.existsSync(path)) {
-    return fs.readFileSync(path, "utf-8");
+    const content = fs.readFileSync(path, "utf-8");
+    const cleaned = content.replace(/[\n\r\t]/gm, "");
+    logs.appendLine(`✅ File read successfully (length: ${content.length} chars, cleaned: ${cleaned.length} chars)`);
+    return cleaned;
   }
+  logs.appendLine(`❌ File does not exist or path is undefined`);
   return undefined;
 }
 

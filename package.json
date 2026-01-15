@@ -3,7 +3,7 @@
   "version": "1.0.13",
   "publisher": "ipierre1",
   "engines": {
-    "vscode": "^1.106.0"
+    "vscode": "^1.105.0"
   },
   "galleryBanner": {
     "color": "#e00",
@@ -27,45 +27,15 @@
   "preview": false,
   "main": "./out/extension.js",
   "contributes": {
-    "configuration": {
-      "title": "ansible-vault",
-      "properties": {
-        "ansibleVault.keyPass": {
-          "type": "string",
-          "default": "",
-          "description": "ansible-vault password text"
-        },
-        "ansibleVault.keyFile": {
-          "type": "string",
-          "default": "",
-          "description": "ansible-vault password file path or vault-identity-list"
-        },
-        "ansibleVault.encryptVaultId": {
-          "type": "string",
-          "default": "",
-          "description": "ansible-vault vault ID for encryption"
-        }
-      }
-    },
     "commands": [
       {
         "command": "extension.ansibleVault",
-        "title": "Ansible Vault - Encrypt & Decrypt",
+        "title": "Ansible Vault - Encrypt Value / Copy Decrypted",
         "category": "Ansible Vault"
       },
       {
-        "command": "extension.ansibleVault.rekey",
-        "title": "Ansible Vault - Rekey",
-        "category": "Ansible Vault"
-      },
-      {
-        "command": "extension.ansibleVault.selectVaultId",
-        "title": "Remember vault ID for encryption with ansible-vault",
-        "category": "Ansible Vault"
-      },
-      {
-        "command": "extension.ansibleVault.clearVaultIdSelection",
-        "title": "Reset vault ID setting for ansible-vault",
+        "command": "extension.ansibleVault.file",
+        "title": "Ansible Vault - Encrypt/Decrypt Entire File",
         "category": "Ansible Vault"
       }
     ],
@@ -79,35 +49,15 @@
         {
           "command": "extension.ansibleVault",
           "when": "editorTextFocus"
-        },
-        {
-          "command": "extension.ansibleVault.rekey",
-          "when": "editorTextFocus"
         }
       ]
     },
     "keybindings": [
       {
         "command": "extension.ansibleVault",
-        "key": "ctrl+alt+w",
-        "mac": "cmd+alt+w",
+        "key": "ctrl+alt+v",
+        "mac": "cmd+alt+v",
         "when": "editorTextFocus"
-      },
-      {
-        "command": "extension.ansibleVault.rekey",
-        "key": "ctrl+alt+q",
-        "mac": "cmd+alt+q",
-        "when": "editorTextFocus"
-      },
-      {
-        "command": "extension.ansibleVault.selectVaultId",
-        "key": "ctrl+alt+=",
-        "mac": "cmd+alt+="
-      },
-      {
-        "command": "extension.ansibleVault.clearVaultIdSelection",
-        "key": "ctrl+alt+-",
-        "mac": "cmd+alt+-"
       }
     ]
   },
@@ -131,7 +81,7 @@
     "@semantic-release/github": "^12.0.2",
     "@semantic-release/release-notes-generator": "^14.1.0",
     "@types/node": "^25.0.8",
-    "@types/vscode": "^1.106.1",
+    "@types/vscode": "^1.105.1",
     "@typescript-eslint/eslint-plugin": "^8.53.0",
     "@typescript-eslint/parser": "^8.53.0",
     "@vscode/vsce": "^3.7.1",
